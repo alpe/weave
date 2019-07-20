@@ -30,6 +30,7 @@ import (
 	"github.com/iov-one/weave/x/gov"
 	"github.com/iov-one/weave/x/msgfee"
 	"github.com/iov-one/weave/x/multisig"
+	"github.com/iov-one/weave/x/nft"
 	"github.com/iov-one/weave/x/sigs"
 	"github.com/iov-one/weave/x/utils"
 	"github.com/iov-one/weave/x/validators"
@@ -38,7 +39,7 @@ import (
 // Authenticator returns the typical authentication,
 // just using public key signatures
 func Authenticator() x.Authenticator {
-	return x.ChainAuth(sigs.Authenticate{}, multisig.Authenticate{})
+	return x.ChainAuth(sigs.Authenticate{}, multisig.Authenticate{}, nft.Authenticate{})
 }
 
 // Chain returns a chain of decorators, to handle authentication,
@@ -56,6 +57,7 @@ func Chain(authFn x.Authenticator, minFee coin.Coin) app.Decorators {
 		utils.NewSavepoint().OnCheck(),
 		sigs.NewDecorator(),
 		multisig.NewDecorator(authFn),
+		nft.NewDecorator(authFn),
 		// cash.NewDynamicFeeDecorator embeds utils.NewSavepoint().OnDeliver()
 		cash.NewDynamicFeeDecorator(authFn, ctrl),
 		msgfee.NewAntispamFeeDecorator(minFee),

@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package nft;
+
+import "codec.proto";
+import "gogoproto/gogo.proto";
+
+message Token {
+  weave.Metadata metadata = 1;
+  // ID is the unique identifier of this token.
+  bytes id = 2 [(gogoproto.customname) = "ID"];
+  // self address
+  bytes address = 3 [(gogoproto.casttype) = "github.com/iov-one/weave.Address"];
+  bytes owner = 4 [(gogoproto.casttype) = "github.com/iov-one/weave.Address"];
+  string description = 5; // human readable description
+  string image = 6; // symbol
+  string token_uri = 7 [(gogoproto.customname) = "TokenURI"]; // optional
+  repeated KeyedValue keyed_values = 8 [(gogoproto.nullable) = false];
+}
+
+message KeyedValue {
+  string key = 1;
+  bytes value = 2;
+}
+
+message CreateMsg {
+  weave.Metadata metadata = 1;
+  bytes owner = 2 [(gogoproto.casttype) = "github.com/iov-one/weave.Address"];
+  string description = 3;
+  string image = 4; // symbol
+  string token_uri = 5 [(gogoproto.customname) = "TokenURI"];
+  repeated KeyedValue keyed_values = 6 [(gogoproto.nullable) = false];
+}
+
+message TransferMsg {
+  weave.Metadata metadata = 1;
+  bytes token_id = 2 [(gogoproto.customname) = "TokenID"];
+  // Max length 128 character.
+  string memo = 3;
+}
+
+message BurnMsg {
+  weave.Metadata metadata = 1;
+  bytes token_id = 2 [(gogoproto.customname) = "TokenID"];
+  // Max length 128 character.
+  string memo = 3;
+}
