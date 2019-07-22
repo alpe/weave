@@ -83,6 +83,9 @@ var (
 	// ErrIteratorDone is returned when an iterator hits the end of the data source.
 	ErrIteratorDone = Register(22, "iterator done")
 
+	// ErrLimit an upper or lower boundary limit was reached.
+	ErrLimit = Register(23, "limit")
+
 	// ErrNetwork is returned on network failure (only for client libraries)
 	ErrNetwork = Register(100200, "network")
 

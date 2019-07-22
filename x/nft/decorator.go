@@ -8,7 +8,7 @@ import (
 var _ weave.Decorator = Decorator{}
 
 const (
-	authMarker      = "_weave.nft.authenticateable"
+	authMarker      = ReservedKeyNamespace + ".authenticateable"
 	ownerVerifyCost = 1000
 )
 

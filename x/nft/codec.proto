@@ -19,6 +19,7 @@ message Token {
 }
 
 message KeyedValue {
+  // key is lower case and must match '^[a-z-9_.-]{1,64}$'
   string key = 1;
   bytes value = 2;
 }

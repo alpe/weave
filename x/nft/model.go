@@ -1,11 +1,13 @@
 package nft
 
 import (
+	"regexp"
+	"strings"
+
 	"github.com/iov-one/weave"
 	"github.com/iov-one/weave/errors"
 	"github.com/iov-one/weave/migration"
 	"github.com/iov-one/weave/orm"
-	"github.com/iov-one/weave/store"
 )
 
 func init() {
@@ -25,14 +27,36 @@ func (n *Token) Validate() error {
 	return errs
 }
 
+const ReservedKeyNamespace = "_weave.nft"
+
+const maxKeysCount = 10
+
 type KeyedValueSet []KeyedValue
 
 func (s KeyedValueSet) Validate() error {
+	if len(s) > maxKeysCount {
+		return errors.Wrapf(errors.ErrLimit, "max count %d", maxKeysCount)
+	}
 	var errs error
+	index := make(map[string]struct{})
+	for _, v := range s {
+		if _, exists := index[v.Key]; exists {
+			errs = errors.AppendField(errs, "KeyedValues", errors.Wrapf(errors.ErrDuplicate, "key exists: %q", v.Key))
+		}
+	}
 	for _, v := range s {
 		errors.Append(errs, v.Validate())
 	}
 	return errs
+}
+
+func (s KeyedValueSet) ContainsReservedKeys() bool {
+	for _, v := range s {
+		if strings.HasPrefix(v.Key, ReservedKeyNamespace) {
+			return true
+		}
+	}
+	return false
 }
 
 func (s KeyedValueSet) Copy() KeyedValueSet {
@@ -53,11 +77,17 @@ func (s KeyedValueSet) Get(key string) ([]byte, bool) {
 
 }
 
+const maxValueLength = 100
+
+var validKey = regexp.MustCompile(`^[a-z-9_.-]{1,64}$`).MatchString
+
 func (n KeyedValue) Validate() error {
-	// no duplicates
-	// max 20 keys
-	// max length values
-	// keys regexp
+	if len(n.Value) > maxValueLength {
+		return errors.Wrapf(errors.ErrLimit, "max length %d", maxValueLength)
+	}
+	if !validKey(n.Key) {
+		return errors.Wrap(errors.ErrInput, "invalid key")
+	}
 	return nil
 }
 
@@ -74,61 +104,10 @@ func (n *Token) Copy() orm.CloneableData {
 	}
 }
 
-type Bucket struct {
-	orm.ModelBucket
-}
-
-func NewBucket() *Bucket {
-	b := orm.NewModelBucket("nft", &Token{},
-		orm.WithIDSequence(revenueSeq),
-		orm.WithIndex("owner", ownerIndexer, false),
-		orm.WithIndex("authN", authNIndexer, false),
-	)
-	return &Bucket{migration.NewModelBucket("nft", b)}
-}
-
-func (b Bucket) ByAuthNIndex(db store.KVStore, owner weave.Address) ([]Token, error) {
-	var result []Token
-	_, err := b.ByIndex(db, "authN", owner, result)
-	return result, errors.Wrap(err, "failed to find by authN index")
-}
-
-func ownerIndexer(obj orm.Object) ([]byte, error) {
-	nft, err := toNonFungibleToken(obj)
-	if err != nil {
-		return nil, err
-	}
-	return nft.Owner, nil
-}
-
-// authNIndexer is a indexes only owners for nfts that contains authMarker data
-func authNIndexer(obj orm.Object) ([]byte, error) {
-	nft, err := toNonFungibleToken(obj)
-	if err != nil {
-		return nil, err
-	}
-	if _, exists := KeyedValueSet(nft.KeyedValues).Get(authMarker); !exists {
-		return nil, nil
-	}
-	return nft.Owner, nil
-}
-
-func toNonFungibleToken(obj orm.Object) (*Token, error) {
-	if obj == nil {
-		return nil, errors.Wrap(errors.ErrHuman, "can not take index of nil")
-	}
-	nft, ok := obj.Value().(*Token)
-	if !ok {
-		return nil, errors.Wrap(errors.ErrHuman, "can only take index of Token")
-	}
-	return nft, nil
-}
-
-var revenueSeq = orm.NewSequence("nft", "id")
-
 func TokenCondition(key []byte) weave.Condition {
 	return weave.NewCondition("nft", "token", key)
 }
+
 func ExtensionCondition(ext []byte) weave.Condition {
 	return weave.NewCondition("nft", "custom", ext)
 }
